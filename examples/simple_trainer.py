@@ -1311,7 +1311,7 @@ class Runner:
             camtoworlds_all = camtoworlds_all[:, :3, :]  # [N, 3, 4]
         elif cfg.render_traj_path == "interp":
             camtoworlds_all = generate_interpolated_path(
-                camtoworlds_all, 1
+                camtoworlds_all, 5
             )  # [N, 3, 4]
         elif cfg.render_traj_path == "ellipse":
             height = camtoworlds_all[:, 2, 3].mean()
@@ -1346,7 +1346,8 @@ class Runner:
         # save to video
         video_dir = f"{cfg.result_dir}/videos"
         os.makedirs(video_dir, exist_ok=True)
-        writer = imageio.get_writer(f"{video_dir}/traj_{step}.mp4", fps=30)
+        writer = imageio.get_writer(f"{video_dir}/traj_{step}.mp4", fps=10)
+        # writer = imageio.get_writer(f"{video_dir}/traj_{step}.mp4", fps=30)
         for i in tqdm.trange(len(camtoworlds_all), desc="Rendering trajectory"):
             camtoworlds = camtoworlds_all[i : i + 1]
             Ks = K[None]
@@ -1360,17 +1361,24 @@ class Runner:
                 sh_degree=cfg.sh_degree,
                 near_plane=cfg.near_plane,
                 far_plane=cfg.far_plane,
-                render_mode="RGB+ED",
+                render_mode="RGB",
+                # render_mode="RGB+ED",
             )  # [1, H, W, 4]
-            colors = torch.clamp(renders[..., 0:3], 0.0, 1.0)  # [1, H, W, 3]
-            depths = renders[..., 3:4]  # [1, H, W, 1]
-            depths = (depths - depths.min()) / (depths.max() - depths.min())
-            canvas_list = [colors, depths.repeat(1, 1, 1, 3)]
 
-            # write images
-            canvas = torch.cat(canvas_list, dim=2).squeeze(0).cpu().numpy()
-            canvas = (canvas * 255).astype(np.uint8)
-            writer.append_data(canvas)
+            # colors = torch.clamp(renders[..., 0:3], 0.0, 1.0)  # [1, H, W, 3]
+            # depths = renders[..., 3:4]  # [1, H, W, 1]
+            # depths = (depths - depths.min()) / (depths.max() - depths.min())
+            # canvas_list = [colors, depths.repeat(1, 1, 1, 3)]
+
+            # # write images
+            # canvas = torch.cat(canvas_list, dim=2).squeeze(0).cpu().numpy()
+            # canvas = (canvas * 255).astype(np.uint8)
+            # writer.append_data(canvas)
+
+            colors = renders[..., :3]
+            frame = (colors[0].clamp(0, 1).cpu().numpy() * 255).astype(np.uint8)
+            writer.append_data(frame)
+
         writer.close()
         print(f"Video saved to {video_dir}/traj_{step}.mp4")
 
